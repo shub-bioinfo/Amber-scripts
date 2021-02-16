@@ -1,0 +1,126 @@
+#!/bin/bash
+#case menu
+
+clear
+#1. FOR PBC BOX INFORMATION 
+ante-parm()
+{
+  echo -e "\nFor running the Antechamber and Parmchk Script "
+cat > ante <<EOF
+name=\$@
+antechamber -i \$name.mol2 -fi mol2 -o \$name-ante.mol2 -fo mol2 -c bcc -s 2 
+parmchk -i \$name-ante.mol2 -f mol2 -o  \$name.frcmod -a Y 
+EOF
+chmod +x ante
+}
+
+
+#2.
+tleapl()
+{
+  echo -e "\ntleap to generate the structures \n"
+cat >tleap.in <<EOF
+loadamberparams .frcmod
+x = loadmol2 .mol2
+check
+savepdb x .pdb
+saveamberparm x .prmtop .inpcrd
+quit
+EOF
+}
+
+#3. TO CREATE THE INDEX FILE
+make_ndx()
+{
+  echo -e "\nFor making the index file in gromacs.\n"
+  echo -e " gmx make_ndx -f mdrun.gro -o index.ndx  \n"
+}
+
+#4. TO WRAP THE MD TRAJECTORY
+wrap()
+{
+  echo -e "\nThis is the script for wrapping and centering the trajectory. (enter 0 1)   \n "
+  echo -e "cpptraj -p gyrb-novo.prmtop -y prod4.mdcrd -x prod4_wrap.mdcrd\n"
+  echo -e "parm cbl-nxl.prmtop\n"
+  echo -e "trajin npt3.mdcrd\n"
+  echo -e "trajout npt3_wrap.mdcrd\n"
+  echo -e "center :1-359\n"
+  echo -e "image familiar\n"
+  echo -e "go\n"
+}
+
+#5. TO DUMP THE PARTICULAR FRAME NUMBER
+dump_frame()
+{
+  echo -e "\nThis is the script for dumping any particular frame structure. (time in ps) \n"
+  echo -e "gmx trjconv -f mdrun_wrap.xtc -s mdrun.tpr -dump 16960 -o frame-str.gro     \n "
+}
+
+#6. TO RESTART THE CRASHED RUN
+crash()
+{
+  echo -e "\nThis is the script to restart the crashed trajectory.\n"
+  echo -e " gmx mdrun -deffnm mdrun -cpi mdrun.cpt\n"
+}
+
+#7. TO EXTEND THE MD SIMULATION
+extend()
+{ 
+  echo -e "\nThis is the script to extend a stopped simulation.\n"  
+  echo -e "gmx convert-tpr -s mdrun.tpr -f mdrun.cpt -o mdrun.tpr -extend to-extend-ps\n"
+}
+
+#8. AMBER TO GROMACS PARMED SCRIPT
+amb-to-gro()
+{
+  echo -e "\nIt will generate amb-to-gro.py script to convert in gromacs format."
+
+cat > amb-to-gro.py <<EOF
+import parmed as pmd
+a=input("Enter the prmtop file > ")
+b=input("Enter the inpcrd file > ")
+
+amber = pmd.load_file(a, b)
+# Save a GROMACS topology and GRO file
+amber.save('gromacs5.top')
+amber.save('gromacs5.gro')
+EOF
+}
+
+while true ;
+do
+echo -e "
+Please select:
+
+\033[0;105;30m
+1. ANTE-PARMCHK     2. tleap-LIG        3. tleap-PRO        4. Wrapping         
+5. Dump_frame       6. Crash-start      7. Extend           8. Amber-to-Gromacs 
+0. EXIT             
+\033[0m"
+
+echo "Enter selection [1-7] 0 for EXIT:"
+read xyz
+
+#echo $xyz
+case $xyz in
+    1)   ante-parm 
+         ;;
+    2)   tleapl
+         ;;
+    3)   make_ndx
+         ;;
+    4)   wrap
+         ;;
+    5)   dump_frame 
+         ;;
+    6)   crash 
+         ;;
+    7)   extend 
+         ;;
+    8)   amb-to-gro 
+         ;;
+    *)   echo "EXIT" >&2
+         exit 
+         ;;
+esac
+done
