@@ -1,0 +1,7 @@
+parm cbl-nxl.prmtop
+trajin npt_1.mdcrd
+trajout npt_1wrap.mdcrd
+center :1-359
+image familiar
+go
+
